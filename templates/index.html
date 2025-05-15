@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>KoïtaAI Web</title>
+    <style>
+        body { background: #111; color: #fff; font-family: sans-serif; padding: 20px; }
+        #chat { border: 1px solid #444; padding: 10px; height: 300px; overflow-y: auto; background: #222; }
+        input, button { padding: 10px; margin-top: 10px; width: 100%; }
+    </style>
+</head>
+<body>
+    <h1>Bienvenue sur KoïtaAI</h1>
+    <div id="chat"></div>
+    <input type="text" id="message" placeholder="Pose ta question...">
+    <button onclick="sendMessage()">Envoyer</button>
+    <button onclick="startVoice()">🎤 Parler</button>
+    <button onclick="downloadZip()">Télécharger réponse ZIP</button>
+    <br><br>
+    <input type="file" id="zipFile">
+    <button onclick="uploadZip()">Analyser ZIP</button>
+
+    <script>
+        function appendToChat(sender, text) {
+            const div = document.createElement("div");
+            div.innerHTML = `<strong>${sender}:</strong> ${text}`;
+            document.getElementById("chat").appendChild(div);
+        }
+
+        async function sendMessage() {
+            const msg = document.getElementById("message").value;
+            appendToChat("Toi", msg);
+            const res = await fetch("/ask", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ message: msg })
+            });
+            const data = await res.json();
+            appendToChat("KoïtaAI", data.response);
+            speak(data.response);
+            document.getElementById("message").value = "";
+        }
+
+        function speak(text) {
+            const synth = window.speechSynthesis;
+            const utter = new SpeechSynthesisUtterance(text);
+            utter.lang = "fr-FR";
+            synth.speak(utter);
+        }
+
+        function startVoice() {
+            const rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            rec.lang = "fr-FR";
+            rec.onresult = e => {
+                document.getElementById("message").value = e.results[0][0].transcript;
+                sendMessage();
+            };
+            rec.start();
+        }
+
+        function downloadZip() {
+            window.location.href = "/download-zip";
+        }
+
+        async function uploadZip() {
+            const file = document.getElementById("zipFile").files[0];
+            const formData = new FormData();
+            formData.append("file", file);
+            const res = await fetch("/upload-zip", { method: "POST", body: formData });
+            const data = await res.json();
+            appendToChat("KoïtaAI", data.response);
+            speak(data.response);
+        }
+    </script>
+</body>
+</html>
